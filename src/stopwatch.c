@@ -22,8 +22,9 @@
 #define DEFAULT_INTERVAL_US 100000
 
 // Conversion factors
-#define US_PER_MS 1000llu
-#define US_PER_S  1000000.0
+#define US_PER_MS      1000llu
+#define US_PER_S       1000000.0
+#define US_PER_MINUTE  60000000llu
 
 // Flags to tell the sleepLoop which "button" has been pressed
 int lapPressed = 0;
@@ -91,6 +92,12 @@ void turnOffLineBuffering() {
    tcsetattr(STDIN_FILENO, TCSANOW, &termiosStruct);
 }
 
+void formatTime(char buf[], unsigned long long elapsed) {
+   unsigned long long minutes = elapsed / US_PER_MINUTE;
+   double seconds = (elapsed % US_PER_MINUTE) / US_PER_S;
+   sprintf(buf, "%llum %0.3fs", minutes, seconds);
+}
+
 /**
  * This function runs in its own thread and periodically prints out the elapsed time.
  * It waits for signals sent to it from its parent thread to tell it what to do
@@ -106,6 +113,7 @@ void* sleepLoop(void* interval) {
    signal(LAP_SIGNAL, sleepLoopSignalHandler);
    signal(STOP_SIGNAL, sleepLoopSignalHandler);
 
+   char buf[100];
    // For ever
    while (1) {
       uTimeNow = getTimeNowUs();
@@ -114,7 +122,8 @@ void* sleepLoop(void* interval) {
       if (usleep(uTimeNext - uTimeNow) == 0) {
          // If no signal caught then print out elapsed time
          uTimeNow = getTimeNowUs();
-         fprintf(stdout, "\rTime Elapsed : %0.3fs", (uTimeNow - uStartTime) / US_PER_S);
+         formatTime(buf, uTimeNow - uStartTime);
+         fprintf(stdout, "\rTime Elapsed : %s", buf);
          fflush(stdout);
 
          uTimeNext += increment;
